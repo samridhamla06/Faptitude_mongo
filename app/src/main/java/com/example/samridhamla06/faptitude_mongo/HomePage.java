@@ -10,6 +10,7 @@ import android.widget.Toast;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -34,6 +35,7 @@ public class HomePage extends AppCompatActivity {
     private JSONArray myJsonArray;
     private List<Question> questionList;
     private MyAdapter myAdapter;
+    final String host = "http://192.168.2.5:3000/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +43,7 @@ public class HomePage extends AppCompatActivity {
         setContentView(R.layout.activity_home_page);
 
         listView = (ListView)findViewById(R.id.listView1);
-        final String URL = "http://192.168.2.2:3000/hello";
+        final String URL = "http://192.168.2.5:3000/";
         questionList = new ArrayList<>();
         try {
             initSocket();
@@ -52,60 +54,33 @@ public class HomePage extends AppCompatActivity {
 
 
 // pass second argument as "null" for GET requests
-        JsonObjectRequest req = new JsonObjectRequest(URL, null,
-                new Response.Listener<JSONObject>() {
+
+        JsonArrayRequest getRequest = new JsonArrayRequest(URL,
+                new Response.Listener<JSONArray>() {
                     @Override
-                    public void onResponse(JSONObject response) {
+                    public void onResponse(JSONArray response) {
+                        System.out.println("length of get response is " + response.length());
+                        myJsonArray = (JSONArray)response;
                         try {
-                            VolleyLog.v("Response:%n %s", response.toString(4));
-                            Toast.makeText(HomePage.this,"Connection successfull",Toast.LENGTH_LONG).show();
-                            myJsonArray = response.getJSONArray("questions");
                             addJSONToListView(myJsonArray);
-                          //  initSocket();
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
                     }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                VolleyLog.e("Error: ", "volley error madrchod");
-            }
-        });
-
-        Volley.newRequestQueue(this).add(req);
-        //checkIntentStatus();
-       Intent receivedNewQsIntent = getIntent();
-        System.out.println("----------IST STEP-----------------IST STEP--------");
-        if(receivedNewQsIntent!=null && receivedNewQsIntent.hasExtra("caption")){
-            System.out.println("----------2ND STEP-----------------2ND STEP--------");
-            Log.d("receivedNewQsIntent",receivedNewQsIntent.getStringExtra("caption"));
-            caption = receivedNewQsIntent.getStringExtra("caption");
-            String host = "http://192.168.2.4:3000";
-            try {
-                socket = IO.socket(host);
-            } catch (URISyntaxException e) {
-                e.printStackTrace();
-            }
-            socket.emit("Question-Added",caption);
-        }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("Error.Response", error.toString());
+                    }
+                }
+        );
+        Volley.newRequestQueue(this).add(getRequest);
 
         myAdapter = new MyAdapter(HomePage.this,questionList);
         listView.setAdapter(myAdapter);
     }
 
-    private void checkIntentStatus() throws URISyntaxException {
-        Intent receivedNewQsIntent = getIntent();
-
-        if(receivedNewQsIntent!=null && receivedNewQsIntent.hasExtra("caption")){
-            System.out.println(receivedNewQsIntent.getExtras().getString("caption"));
-            caption = receivedNewQsIntent.getExtras().getString("caption");
-            String host = "http://192.168.2.4:3000";
-            socket = IO.socket(host);
-            socket.emit("Question-Added", caption);
-        }else
-            return;
-    }
 
     private void addJSONToListView(JSONArray arr) throws JSONException {
         Log.d("json_arr", arr.toString());
@@ -138,7 +113,6 @@ public class HomePage extends AppCompatActivity {
         return new Question(qid,desc,image_id,caption,insert_user);
     }
     private void initSocket() throws URISyntaxException {
-        String host = "http://192.168.2.2:3000";
         socket = IO.socket(host);
         socket.on("chat-message", new Emitter.Listener() {
             @Override
@@ -165,10 +139,16 @@ public class HomePage extends AppCompatActivity {
                     @Override
                     public void run() {
                         System.out.println("Welcome to Question Added");
-                        String receivedCaption = (String) args[0];
-                        Log.d("New Question is", receivedCaption);
-                        questionList.add(new Question(10, "kuch bhi", 10, receivedCaption, "shamala"));
+                        JSONObject data = (JSONObject) args[0];
+                        Log.d("New Question is", data.toString());
+                        try {
+                            System.out.println("New Question conversion is " + convertJSONToObject(data).toString());
+                            questionList.add(convertJSONToObject(data));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
                         myAdapter.notifyDataSetChanged();
+                        System.out.println(" Question is now Added");
                     }
                 });
             }

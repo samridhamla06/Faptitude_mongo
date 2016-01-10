@@ -12,14 +12,16 @@ import android.widget.EditText;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.URISyntaxException;
 
 public class AddQuestion extends AppCompatActivity {
     private String caption;
     private EditText editText;
     //private Socket socket;
-    final String URL = "192.168.2.2:3000/hello";
-
+    final String URL = "http://192.168.2.5:3000/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,14 +39,21 @@ public class AddQuestion extends AppCompatActivity {
             emitEvent(caption);
         } catch (URISyntaxException e) {
             e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
         //intent.putExtra("caption",caption);
         //startActivity(intent);
     }
 
-    private void emitEvent(String caption) throws URISyntaxException {
-        //HomePage.socket = IO.socket(URL);
-        HomePage.socket.emit("Question-Added", caption);
+    private void emitEvent(String caption) throws URISyntaxException, JSONException {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("qid",10);
+        jsonObject.put("desc","kuchbhi---kuchbhi");
+        jsonObject.put("image_id",10);
+        jsonObject.put("caption",caption);
+        jsonObject.put("insert_user",10);
+        HomePage.socket.emit("Question-Added", jsonObject);
 
     }
 }
